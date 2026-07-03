@@ -59,7 +59,7 @@ public class ColoredLightEngine {
     private boolean enabled = true;
     private boolean packsInitialized = false;
 
-    private static final String CORE_SHADER_PACK_ID = ColorfulLighting.MOD_ID + ":add_pack/" + ColorfulLighting.BUILT_IN_RESOURCE_PACK_ID;
+    private static final String CORE_SHADER_PACK_ID = ColorfulLighting.CORE_SHADER_PACK_ID;
 
     private Frustum frustum;
 
