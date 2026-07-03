@@ -999,7 +999,7 @@ public class ColoredLightEngine {
                 boolean geometryOccludes = false;
                 if (sourceStateExists) {
                     boolean neighborOccludes = neighborBlockState.useShapeForLightOcclusion();
-
+                    
                     if (sourceOccludes || neighborOccludes) {
                         VoxelShape sourceFaceShape = sourceOccludes ? sourceBlockState.getFaceOcclusionShape(level.getLevel(), request.blockPos, direction) : Shapes.empty();
                         VoxelShape neighbourFaceShape = neighborOccludes ? neighborBlockState.getFaceOcclusionShape(level.getLevel(), neighbourPos, direction.getOpposite()) : Shapes.empty();
