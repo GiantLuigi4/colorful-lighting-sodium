@@ -179,4 +179,3 @@ Unknown packs that read the lightmap through standard `gl_MultiTexCoord1` patter
 
 # ⚠️ Known Issues/Planned Fixes
 
-*   Blocks with emissive textures don't properly propagate lighting outwards
