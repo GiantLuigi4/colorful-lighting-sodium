@@ -25,7 +25,7 @@ To avoid performance issues, all of this light propagation is handled on a separ
 *   **Starlight Support**: Works seamlessly with Starlight.
 *   **True Darkness Support**: Compatible with True Darkness.
 *   **Oculus Support**: Colorful Lighting now ships a shaderpack auto-patcher (similar to Euphoria Patches). On startup it scans your `shaderpacks` folder and creates a patched `<Pack> + ColorfulLighting` copy of every recognized pack — select that copy in the Oculus shader GUI and the Colored Light Engine stays enabled. Unpatched packs still disable the engine automatically. Run `/cl patchshaders` to re-scan without restarting, or set `autoPatchShaderpacks = false` in the client config to opt out.
-*   **Dynamic Light Mods**: Most Dynamic Light mods will simply not work. [Lively Lighting](https://github.com/Camawama/LivelyLighting) is the only known working Dynamic Lighting Mod compatible with Colorful Lighting.
+*   **Dynamic Light Mods**: Most Dynamic Light mods are NOW WORKING! [Lively Lighting](https://github.com/Camawama/LivelyLighting) is still the only known working Dynamic Lighting Mod compatible with the filters.json entries.
 *   **Wakes: Reforged**: Works perfectly with wakes and tints them accordingly
 *   **Flywheel**: Flywheel rendered objects now render with colorful lighting since the Colorful Lighting 2.4.0 update (tested with flywheel 1.0.5).
 *   **Distant Horizons**: Lights rendered inside LODs will not have color. This is something we are working on for a future release.
