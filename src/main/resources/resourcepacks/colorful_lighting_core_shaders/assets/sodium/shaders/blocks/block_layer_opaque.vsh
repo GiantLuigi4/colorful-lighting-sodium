@@ -59,11 +59,7 @@ vec4 _sample_lightmap(sampler2D lightMap, ivec2 uv) {
             _sample_lightmap_vanilla(lightMap, ivec2(int(blue8), 0)).r
         );
 
-        float moonWashoutFactor = mix(3.0, 0.0, u_NightVibrancy);
-        float skyExposure = float(skyLight4) / 15.0;
-        float effectiveSkyBrightness = sky.r * moonWashoutFactor * skyExposure;
-
-        return vec4(sky + block * max(0.1, 1.0 - effectiveSkyBrightness), 1.0);
+        return vec4(sky + block * max(0.1, 1.0 - sky.r), 1.0);
     }
 
     // Check if it's our compressed 16-bit non-compact format (bit 0 == 1)

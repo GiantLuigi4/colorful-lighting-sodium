@@ -1,0 +1,33 @@
+#ifndef COLORFUL_LIGHTING_PATCH
+#define COLORFUL_LIGHTING_PATCH
+
+// additional helper methods are added if the shader dev has made changes to support colored lighting
+vec4 cl_sampleSky(sampler2D lm, vec2 lmcoord) {
+    // lightmap is 16x16, uses LINEAR REPEAT; must be 0.5 pixels in to get the correct value
+    vec2 sampCoord = vec2(0.5 / 16.0, lmcoord.y);
+    vec4 sky = texture2D(lm, sampCoord);
+
+    return sky;
+}
+
+vec3 cl_sampleColor(sampler2D lm, vec3 tintColor) {
+    vec3 sampleColor = clamp(cl_lighting_color, vec3(0.5 / 16.0), vec3(15.5 / 16.0));
+    // the "vanilla" implementation of colorful lighting samples the block lighting per-channel
+    return vec3(
+        texture2D(lm, vec2(sampleColor.r, 0)).r,
+        texture2D(lm, vec2(sampleColor.g, 0)).r,
+        texture2D(lm, vec2(sampleColor.b, 0)).r
+    );
+}
+
+// if the shader dev has specifically made changes to their shader for colorful lighting, we can use a shorter method name
+// no real concern of conflict at this point
+vec4 cl_blendLight(sampler2D lm, vec2 lmcoord) {
+    vec4 sky = cl_sampleSky(lm, lmcoord);
+    vec3 block = cl_sampleColor(lm, lmcoord);
+
+    float wash = max(0.1, 1.0 - max(sky.r, max(sky.g, sky.b)));
+    return vec4(sky.rgb + block * wash, 1.0);
+}
+
+#endif
