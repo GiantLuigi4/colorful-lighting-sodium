@@ -18,6 +18,8 @@ import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Blocks;
+import me.erykczy.colorfullighting.common.config.VariantList;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraftforge.fml.ModList;
 import net.minecraftforge.registries.ForgeRegistries;
@@ -82,6 +84,15 @@ public final class DynamicLightsCompat {
     // set once dynamic light blocks are known to exist, so vanilla worlds skip the per-tick color scan
     private static volatile boolean trackBlockColors;
 
+    /**
+     * Entity NBT serialized at most once per client tick, and only for entity types whose config has
+     * an NBT rule. resolveEntityColor runs for every rendered entity, sometimes twice a tick, and
+     * Entity#saveWithoutId is far too expensive to repeat.
+     */
+    private static final Map<Integer, CompoundTag> ENTITY_NBT = new HashMap<>();
+    private static final CompoundTag NO_NBT = new CompoundTag();
+    private static boolean loggedEntitySaveFailure = false;
+
     private static SodiumDynamicLightsHook sdlHook;
     private static boolean trackEntities;
     /** Last remesh anchor per tracked entity id, so terrain updates as sources move. Client thread only. */
@@ -117,6 +128,8 @@ public final class DynamicLightsCompat {
      */
     public static void clientTick() {
         if (sdlHook == null && !trackEntities && !trackBlockColors) return;
+
+        ENTITY_NBT.clear();
 
         ColoredLightEngine engine = ColoredLightEngine.getInstance();
         ClientLevel level = Minecraft.getInstance().level;
@@ -327,8 +340,8 @@ public final class DynamicLightsCompat {
         if (source instanceof BlockEntity blockEntity) {
             ResourceLocation blockId = ForgeRegistries.BLOCKS.getKey(blockEntity.getBlockState().getBlock());
             if (blockId != null) {
-                Config.BlockEmitterConfig config = Config.getBlockEmitterConfig(blockId);
-                if (config != null && config.defaultEmitter != null) return config.defaultEmitter.color();
+                VariantList<Config.ColorEmitter> config = Config.getBlockEmitterConfig(blockId);
+                if (config != null && config.getDefault() != null) return config.getDefault().color();
             }
         }
         return Config.defaultColor;
@@ -339,8 +352,11 @@ public final class DynamicLightsCompat {
     private static ColorRGB4 resolveEntityColor(Entity entity) {
         ResourceLocation entityId = ForgeRegistries.ENTITY_TYPES.getKey(entity.getType());
         if (entityId != null) {
-            Config.ColorEmitter emitter = Config.getEntityEmitter(entityId);
-            if (emitter != null) return emitter.color();
+            VariantList<Config.ColorEmitter> config = Config.getEntityEmitterConfig(entityId);
+            if (config != null) {
+                Config.ColorEmitter emitter = config.resolve(null, config.needsNbt() ? entityNbt(entity) : null);
+                if (emitter != null) return emitter.color();
+            }
         }
 
         if (entity instanceof ItemEntity itemEntity) {
@@ -368,6 +384,32 @@ public final class DynamicLightsCompat {
         return null;
     }
 
+    /** Item NBT is already a live tag on the stack, so there is nothing to serialize or cache. */
+    @Nullable
+    private static CompoundTag stackNbt(VariantList<Config.ColorEmitter> config, ItemStack stack) {
+        return config.needsNbt() ? stack.getTag() : null;
+    }
+
+    /**
+     * The entity's NBT for this tick. Serialization can throw for entities whose save code assumes a
+     * server context, so a failure is cached as an empty tag: NBT rules then simply never match.
+     */
+    private static CompoundTag entityNbt(Entity entity) {
+        return ENTITY_NBT.computeIfAbsent(entity.getId(), id -> {
+            try {
+                return entity.saveWithoutId(new CompoundTag());
+            }
+            catch (Throwable e) {
+                if (!loggedEntitySaveFailure) {
+                    loggedEntitySaveFailure = true;
+                    ColorfulLighting.LOGGER.warn("Failed to read NBT of entity {}; its NBT light rules will not apply",
+                            entity.getType(), e);
+                }
+                return NO_NBT;
+            }
+        });
+    }
+
     /** Light color of an item stack, or null when the stack isn't a known light emitter. */
     @Nullable
     private static ColorRGB4 resolveStackColor(ItemStack stack) {
@@ -375,18 +417,21 @@ public final class DynamicLightsCompat {
         ResourceLocation itemId = ForgeRegistries.ITEMS.getKey(stack.getItem());
         if (itemId == null) return null;
 
-        Config.ColorEmitter itemEmitter = Config.getItemEmitter(itemId);
-        if (itemEmitter != null) return itemEmitter.color();
+        VariantList<Config.ColorEmitter> itemConfig = Config.getItemEmitterConfig(itemId);
+        if (itemConfig != null) {
+            Config.ColorEmitter itemEmitter = itemConfig.resolve(null, stackNbt(itemConfig, stack));
+            if (itemEmitter != null) return itemEmitter.color();
+        }
 
         // most placeable light sources share the block's id (torch, lantern, glowstone, ...)
-        Config.BlockEmitterConfig blockConfig = Config.getBlockEmitterConfig(itemId);
-        if (blockConfig != null && blockConfig.defaultEmitter != null) return blockConfig.defaultEmitter.color();
+        VariantList<Config.ColorEmitter> blockConfig = Config.getBlockEmitterConfig(itemId);
+        if (blockConfig != null && blockConfig.getDefault() != null) return blockConfig.getDefault().color();
 
         if (stack.getItem() instanceof BlockItem blockItem && blockItem.getBlock().defaultBlockState().getLightEmission() > 0) {
             ResourceLocation blockId = ForgeRegistries.BLOCKS.getKey(blockItem.getBlock());
             if (blockId != null && !blockId.equals(itemId)) {
-                Config.BlockEmitterConfig config = Config.getBlockEmitterConfig(blockId);
-                if (config != null && config.defaultEmitter != null) return config.defaultEmitter.color();
+                VariantList<Config.ColorEmitter> config = Config.getBlockEmitterConfig(blockId);
+                if (config != null && config.getDefault() != null) return config.getDefault().color();
             }
             return Config.defaultColor; // emits light but has no configured color
         }
@@ -399,7 +444,8 @@ public final class DynamicLightsCompat {
 
         // an items.json brightness overrides everything, so a held item can differ from its block
         // (e.g. glowstone block stays 15 while the held glowstone item is configured to 2)
-        Config.ColorEmitter itemEmitter = itemId == null ? null : Config.getItemEmitter(itemId);
+        VariantList<Config.ColorEmitter> itemConfig = itemId == null ? null : Config.getItemEmitterConfig(itemId);
+        Config.ColorEmitter itemEmitter = itemConfig == null ? null : itemConfig.resolve(null, stackNbt(itemConfig, stack));
         if (itemEmitter != null && itemEmitter.overriddenBrightness4() >= 0) {
             return itemEmitter.overriddenBrightness4();
         }
@@ -409,9 +455,9 @@ public final class DynamicLightsCompat {
         if (stack.getItem() instanceof BlockItem blockItem) {
             ResourceLocation blockId = ForgeRegistries.BLOCKS.getKey(blockItem.getBlock());
             if (blockId != null) {
-                Config.BlockEmitterConfig config = Config.getBlockEmitterConfig(blockId);
-                if (config != null && config.defaultEmitter != null && config.defaultEmitter.overriddenBrightness4() >= 0) {
-                    return config.defaultEmitter.overriddenBrightness4();
+                VariantList<Config.ColorEmitter> config = Config.getBlockEmitterConfig(blockId);
+                if (config != null && config.getDefault() != null && config.getDefault().overriddenBrightness4() >= 0) {
+                    return config.getDefault().overriddenBrightness4();
                 }
             }
             int emission = blockItem.getBlock().defaultBlockState().getLightEmission();

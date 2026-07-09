@@ -64,7 +64,17 @@
 	"minecraft:tube_coral_fan": "blue;6",
 	"minecraft:tube_coral_wall_fan": "blue;6",
 
-	"minecraft:beacon": "white",
+	"minecraft:beacon": {
+		"default": "white",
+		"variants": [
+			{ "nbt": "{Primary:1}", "color": "#33ebff" },
+			{ "nbt": "{Primary:3}", "color": "#d9c043" },
+			{ "nbt": "{Primary:5}", "color": "#ffc700" },
+			{ "nbt": "{Primary:8}", "color": "#fdff84" },
+			{ "nbt": "{Primary:10}", "color": "#cd5cab" },
+			{ "nbt": "{Primary:11}", "color": "#9146f0" }
+		]
+	},
 	"minecraft:conduit": "#9cffff",
 	"minecraft:dragon_egg": "magenta;6",
 	"minecraft:enchanting_table": "purple",

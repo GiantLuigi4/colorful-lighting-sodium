@@ -17,6 +17,7 @@ To avoid performance issues, all of this light propagation is handled on a separ
 *   Light can be absorbed by specific blocks
 *   Emitted colors and filtered colors can be customized in resource packs
 *   Block states can define different colors
+*   NBT can define different colors, for blocks, entities and items (a beacon lit by its effect, a charged creeper, a potion by its type)
 *   The mod is client-side - you can play with it on ANY server while still experiencing colorful lighting!
 
 # 🔗 Mod Compatibility
@@ -70,6 +71,74 @@ You can define different colors for different block states.
     }
 }
 ```
+
+When several `states` entries match, the one constraining the most properties wins
+(`lit=true,signal=true` beats `lit=true`).
+
+### NBT Format
+
+Use a `variants` array to pick a color from a block entity's NBT, a block state, or both. The
+**first** variant whose conditions all hold wins, so order them most-specific first. `default` is
+used when nothing matches.
+
+```
+{
+    "minecraft:beacon": {
+        "default": "white",
+        "variants": [
+            { "nbt": "{Primary:1}", "color": "#00ffff;15" },
+            { "nbt": "{Primary:5}", "color": "#ff4400;15" }
+        ]
+    },
+    "minecraft:furnace": {
+        "default": "#ff4400;1",
+        "variants": [
+            { "state": "lit=true", "nbt": "{Items:[{id:\"minecraft:diamond\"}]}", "color": "cyan;15" },
+            { "state": "lit=true", "color": "orange;7" }
+        ]
+    }
+}
+```
+
+On 1.20.1 a beacon stores its effect as an int id in `Primary`/`Secondary` (`-1` when unset):
+speed `1`, haste `3`, strength `5`, jump boost `8`, regeneration `10`, resistance `11`. So the beacon
+above glows cyan on speed and orange on strength.
+
+*   `nbt` is an **SNBT string**, the same syntax as `/data` and `/give`. Types matter:
+    `{powered:1b}` (byte) does not match `{powered:1}` (int).
+*   Matching is a **subset** test, like vanilla's `/execute if block` — the rule's tags must be
+    contained in the target's NBT. For lists, a rule matches if *any* element matches, so
+    `{Items:[{id:"minecraft:diamond"}]}` means "contains a diamond anywhere".
+*   `variants` works in `emitters.json`, `filters.json`, `absorbers.json`, `entities.json` and
+    `items.json`. In `entities.json` and `items.json` there is no block state, so use `nbt` alone.
+*   A variant with no `state` and no `nbt` is an error — use `default` for the unconditional value.
+
+> **Only NBT the client actually has can be matched.** This mod is client-side, so a rule can only
+> see what the server bothered to send. If a rule never seems to match, that is almost always why.
+
+Minecraft sends a block entity's NBT to the client in two situations: when its chunk is sent, and
+when the block entity explicitly broadcasts an update. Only these vanilla block entities do the
+latter, so **only these update their light the instant their NBT changes**:
+
+`campfire` · `sign` · `spawner` · `conduit` · `command_block` · `structure_block`
+
+Everything else only picks up NBT changes when its chunk is next sent to the client — on rejoin, or
+when you move out of and back into render distance. Most modded block entities *do* broadcast,
+because they need to render their own contents.
+
+Two cases worth calling out:
+
+*   **Chests, barrels, hoppers and other containers never send their `Items` to the client at all.**
+    A rule on container contents will never fire, not even after a chunk reload.
+*   **Beacons never broadcast their effect** — vanilla just marks the chunk unsaved. Colorful Lighting
+    works around this for the beacon *you* set: the effect is applied to your client's beacon as the
+    change is sent. A beacon changed by another player or by `/data` still updates only when its chunk
+    reloads.
+
+Block entities named by an NBT rule are re-read once per tick, and light is re-propagated only when
+the resolved color or brightness actually changes — a lit furnace rewrites `CookTime` every tick, and
+that must not cause a relight. Blocks with no NBT rules are never read at all, so this costs nothing
+unless you use it.
 
 ## filters.json
 
@@ -129,6 +198,19 @@ Define what light color entities emit (REQUIRES [LIVELY LIGHTING](https://github
 }
 ```
 
+Entity NBT works here too. A charged creeper, for example:
+
+```
+{
+    "minecraft:creeper": {
+        "default": "#00FF00",
+        "variants": [
+            { "nbt": "{powered:1b}", "color": "#00FFFF" }
+        ]
+    }
+}
+```
+
 ## items.json
 
 Define what light color held items emit (REQUIRES a dynamic light mod such as [LIVELY LIGHTING](https://github.com/Camawama/LivelyLighting)).
@@ -142,6 +224,19 @@ Define what light color held items emit (REQUIRES a dynamic light mod such as [L
 ```
 
 Without an explicit level, a held block glows at its block's light level (glowstone item = 15) and other items glow at a mid-range level. The `;level` override takes precedence for both.
+
+Item NBT is matched against the stack's tag, the same one `/give` takes:
+
+```
+{
+    "minecraft:potion": {
+        "default": "#ff00ff",
+        "variants": [
+            { "nbt": "{Potion:\"minecraft:strong_healing\"}", "color": "#ff0000;10" }
+        ]
+    }
+}
+```
 
 > Note: with Lively Lighting the light level is chosen by Lively Lighting itself; the `;level` override applies to the client-side dynamic light mods (SodiumDynamicLights, Torcy, AtomicStryker's Dynamic Lights).
 

@@ -2,6 +2,8 @@ package me.erykczy.colorfullighting.event;
 
 import com.mojang.brigadier.CommandDispatcher;
 import me.erykczy.colorfullighting.ColorfulLighting;
+import me.erykczy.colorfullighting.common.BeaconEffectSync;
+import me.erykczy.colorfullighting.common.BlockEntityNbtCache;
 import me.erykczy.colorfullighting.common.ColoredLightEngine;
 import me.erykczy.colorfullighting.common.ViewArea;
 import me.erykczy.colorfullighting.compat.dynamiclights.DynamicLightsCompat;
@@ -12,9 +14,11 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraftforge.client.event.RegisterClientCommandsEvent;
 import net.minecraftforge.client.event.RenderLevelStageEvent;
 import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.event.level.ChunkEvent;
 import net.minecraftforge.event.level.LevelEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 
@@ -68,6 +72,21 @@ public class ClientEventListener {
                 pos.z + renderDistance
         );
         ColoredLightEngine.getInstance().updateViewArea(viewArea);
+
+        // Re-reads tracked block entities' NBT and relights the ones whose resolved light changed.
+        BlockEntityNbtCache.clientTick();
+    }
+
+    /**
+     * Fired after the chunk is registered with the chunk cache, so block states resolve here — unlike
+     * inside LevelChunk#replaceWithPacketData, where the block entities are actually created.
+     */
+    @SubscribeEvent
+    public void onChunkLoad(ChunkEvent.Load event) {
+        if (!event.getLevel().isClientSide()) return;
+        if (event.getChunk() instanceof LevelChunk chunk) {
+            BlockEntityNbtCache.onChunkLoaded(chunk);
+        }
     }
 
     @SubscribeEvent
@@ -83,6 +102,8 @@ public class ClientEventListener {
     @SubscribeEvent
     public void onLevelUnload(LevelEvent.Unload event) {
         if (!event.getLevel().isClientSide()) return;
+        BlockEntityNbtCache.clear();
+        BeaconEffectSync.clear();
         ColoredLightEngine.getInstance().reset();
     }
 
