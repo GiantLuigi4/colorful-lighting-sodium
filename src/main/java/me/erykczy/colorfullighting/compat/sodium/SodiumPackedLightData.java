@@ -35,6 +35,13 @@ public class SodiumPackedLightData {
         return red8 | green8 << 8 | skyLight4 << 16 | blue8 << 20 | alpha4 << 28;
     }
 
+    // Field accessors for hot paths that must not allocate. Same layout as unpackData.
+    public static int unpackRed(int packedData) { return packedData & 0xFF; }
+    public static int unpackGreen(int packedData) { return (packedData >>> 8) & 0xFF; }
+    public static int unpackSkyLight(int packedData) { return (packedData >>> 16) & 0xF; }
+    public static int unpackBlue(int packedData) { return (packedData >>> 20) & 0xFF; }
+    public static int unpackAlpha(int packedData) { return (packedData >>> 28) & 0xF; }
+
     public static SodiumPackedLightData unpackData(int packedData) {
         SodiumPackedLightData data = new SodiumPackedLightData();
         data.red8 = (packedData) & 0xFF;

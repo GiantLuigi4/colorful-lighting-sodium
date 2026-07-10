@@ -130,41 +130,47 @@ public abstract class SodiumAoFaceDataMixin implements SodiumAoFaceDataExtension
             return (sl_avg << 16) | bl_avg;
         }
 
-        var da = SodiumPackedLightData.unpackData(a);
-        var db = SodiumPackedLightData.unpackData(b);
-        var dc = SodiumPackedLightData.unpackData(c);
-        var dd = SodiumPackedLightData.unpackData(d);
+        final int ra = SodiumPackedLightData.unpackRed(a), ga = SodiumPackedLightData.unpackGreen(a), ba = SodiumPackedLightData.unpackBlue(a);
+        final int rb = SodiumPackedLightData.unpackRed(b), gb = SodiumPackedLightData.unpackGreen(b), bb = SodiumPackedLightData.unpackBlue(b);
+        final int rc = SodiumPackedLightData.unpackRed(c), gc = SodiumPackedLightData.unpackGreen(c), bc = SodiumPackedLightData.unpackBlue(c);
+        final int rd = SodiumPackedLightData.unpackRed(d), gd = SodiumPackedLightData.unpackGreen(d), bd = SodiumPackedLightData.unpackBlue(d);
 
-        int sky = blendChannel(da.skyLight4, db.skyLight4, dc.skyLight4, dd.skyLight4);
+        int sky = blendChannel(
+                SodiumPackedLightData.unpackSkyLight(a), SodiumPackedLightData.unpackSkyLight(b),
+                SodiumPackedLightData.unpackSkyLight(c), SodiumPackedLightData.unpackSkyLight(d)
+        );
 
-        int lum_a = Math.max(da.red8, Math.max(da.green8, da.blue8));
-        int lum_b = Math.max(db.red8, Math.max(db.green8, db.blue8));
-        int lum_c = Math.max(dc.red8, Math.max(dc.green8, dc.blue8));
-        int lum_d = Math.max(dd.red8, Math.max(dd.green8, dd.blue8));
+        int lum_a = Math.max(ra, Math.max(ga, ba));
+        int lum_b = Math.max(rb, Math.max(gb, bb));
+        int lum_c = Math.max(rc, Math.max(gc, bc));
+        int lum_d = Math.max(rd, Math.max(gd, bd));
 
+        // Colour of the dimmest lit corner, substituted into the unlit ones so an unlit corner does not
+        // drag the blend towards black. Staying zero when every corner is unlit reproduces the old
+        // `minData == null` fallback without needing the object.
         int minLum = 256;
-        SodiumPackedLightData minData = null;
+        int minR = 0, minG = 0, minB = 0;
 
-        if (lum_a > 0 && lum_a < minLum) { minLum = lum_a; minData = da; }
-        if (lum_b > 0 && lum_b < minLum) { minLum = lum_b; minData = db; }
-        if (lum_c > 0 && lum_c < minLum) { minLum = lum_c; minData = dc; }
-        if (lum_d > 0 && lum_d < minLum) { minLum = lum_d; minData = dd; }
+        if (lum_a > 0 && lum_a < minLum) { minLum = lum_a; minR = ra; minG = ga; minB = ba; }
+        if (lum_b > 0 && lum_b < minLum) { minLum = lum_b; minR = rb; minG = gb; minB = bb; }
+        if (lum_c > 0 && lum_c < minLum) { minLum = lum_c; minR = rc; minG = gc; minB = bc; }
+        if (lum_d > 0 && lum_d < minLum) { minR = rd; minG = gd; minB = bd; }
 
-        int r_a = lum_a > 0 ? da.red8 : (minData != null ? minData.red8 : 0);
-        int g_a = lum_a > 0 ? da.green8 : (minData != null ? minData.green8 : 0);
-        int b_a = lum_a > 0 ? da.blue8 : (minData != null ? minData.blue8 : 0);
+        int r_a = lum_a > 0 ? ra : minR;
+        int g_a = lum_a > 0 ? ga : minG;
+        int b_a = lum_a > 0 ? ba : minB;
 
-        int r_b = lum_b > 0 ? db.red8 : (minData != null ? minData.red8 : 0);
-        int g_b = lum_b > 0 ? db.green8 : (minData != null ? minData.green8 : 0);
-        int b_b = lum_b > 0 ? db.blue8 : (minData != null ? minData.blue8 : 0);
+        int r_b = lum_b > 0 ? rb : minR;
+        int g_b = lum_b > 0 ? gb : minG;
+        int b_b = lum_b > 0 ? bb : minB;
 
-        int r_c = lum_c > 0 ? dc.red8 : (minData != null ? minData.red8 : 0);
-        int g_c = lum_c > 0 ? dc.green8 : (minData != null ? minData.green8 : 0);
-        int b_c = lum_c > 0 ? dc.blue8 : (minData != null ? minData.blue8 : 0);
+        int r_c = lum_c > 0 ? rc : minR;
+        int g_c = lum_c > 0 ? gc : minG;
+        int b_c = lum_c > 0 ? bc : minB;
 
-        int r_d = lum_d > 0 ? dd.red8 : (minData != null ? minData.red8 : 0);
-        int g_d = lum_d > 0 ? dd.green8 : (minData != null ? minData.green8 : 0);
-        int b_d = lum_d > 0 ? dd.blue8 : (minData != null ? minData.blue8 : 0);
+        int r_d = lum_d > 0 ? rd : minR;
+        int g_d = lum_d > 0 ? gd : minG;
+        int b_d = lum_d > 0 ? bd : minB;
 
         int red = (r_a + r_b + r_c + r_d) >> 2;
         int green = (g_a + g_b + g_c + g_d) >> 2;
@@ -293,11 +299,11 @@ public abstract class SodiumAoFaceDataMixin implements SodiumAoFaceDataExtension
         float[] bll = this.bll;
 
         for(int i=0; i<4; i++) {
-            var data = SodiumPackedLightData.unpackData(lm[i]);
-            bl[i] = data.red8;
-            gl[i] = data.green8;
-            bll[i] = data.blue8;
-            sl[i] = data.skyLight4;
+            int l = lm[i];
+            bl[i] = SodiumPackedLightData.unpackRed(l);
+            gl[i] = SodiumPackedLightData.unpackGreen(l);
+            bll[i] = SodiumPackedLightData.unpackBlue(l);
+            sl[i] = SodiumPackedLightData.unpackSkyLight(l);
         }
 
         this.flags |= 2;
