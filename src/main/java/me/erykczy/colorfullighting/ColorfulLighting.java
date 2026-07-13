@@ -45,7 +45,7 @@ public class ColorfulLighting
                 MinecraftForge.EVENT_BUS.register(new ClientEventListener());
                 context.getModEventBus().addListener(ColorfulLighting::onClientSetup);
                 context.getModEventBus().addListener(ColorfulLighting::onLoadingComplete);
-            }
+        }
         });
     }
 

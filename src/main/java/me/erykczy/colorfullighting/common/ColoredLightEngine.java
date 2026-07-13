@@ -14,6 +14,7 @@ import me.erykczy.colorfullighting.compat.flywheel.FlywheelCompat;
 import me.erykczy.colorfullighting.compat.sodium.SodiumCompat;
 import me.erykczy.colorfullighting.mixin.compat.sodium.SodiumWorldRendererAccessor;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -21,6 +22,7 @@ import net.minecraft.core.SectionPos;
 import net.minecraft.server.level.ChunkMap;
 import net.minecraft.server.packs.repository.PackRepository;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -190,6 +192,7 @@ public class ColoredLightEngine {
         private int version = -1;
         private ColoredLightSection light;
         private ColoredLightSection darkness;
+        private final BlockPos.MutableBlockPos fallbackPos = new BlockPos.MutableBlockPos();
     }
 
     /**
@@ -233,8 +236,20 @@ public class ColoredLightEngine {
         }
 
         int colorIndex = ColoredLightSection.getColorIndex(x & 15, y & 15, z & 15);
-        int light = cursor.light == null ? 0 : cursor.light.getPacked(colorIndex);
-        int darkness = cursor.darkness == null ? 0 : cursor.darkness.getPacked(colorIndex);
+        int light;
+        int darkness;
+        if (cursor.light == null && cursor.darkness == null) {
+            // No stored section: the position is outside every region the engine tracks. Chunks can
+            // legitimately be meshed there — Valkyrien Skies ships live in shipyard chunks millions of
+            // blocks from the player, so they can never enter the view area. Colored light never
+            // propagates there, but vanilla block light does; render it as white instead of black so
+            // such chunks keep their vanilla lighting rather than losing block light entirely.
+            light = vanillaBlockLightAsWhitePacked(cursor, x, y, z);
+            darkness = 0;
+        } else {
+            light = cursor.light == null ? 0 : cursor.light.getPacked(colorIndex);
+            darkness = cursor.darkness == null ? 0 : cursor.darkness.getPacked(colorIndex);
+        }
 
         // held/dropped-item light from renderer-based dynamic lighting mods (no-op without sources);
         // applied before the darkness subtraction so darkness absorbers dampen it like any other light
@@ -247,6 +262,20 @@ public class ColoredLightEngine {
         int green = Math.max(0, ((light >>> 4) & 0x0F) - ((darkness >>> 4) & 0x0F));
         int blue = Math.max(0, (light & 0x0F) - (darkness & 0x0F));
         return red << 8 | green << 4 | blue;
+    }
+
+    /**
+     * Vanilla block light at the position, as a packed white 12-bit colour. Reading the client light
+     * engine from Sodium's chunk-build workers matches what vanilla meshing does (RenderChunkRegion
+     * reads it from workers too), so it is as thread-safe as vanilla itself. Positions outside the
+     * build height keep returning 0, same as the missing-section behaviour this falls back from.
+     */
+    private static int vanillaBlockLightAsWhitePacked(SectionCursor cursor, int x, int y, int z) {
+        ClientLevel level = Minecraft.getInstance().level;
+        if (level == null || level.isOutsideBuildHeight(y)) return 0;
+        int brightness = level.getBrightness(LightLayer.BLOCK, cursor.fallbackPos.set(x, y, z));
+        if (brightness <= 0) return 0;
+        return brightness << 8 | brightness << 4 | brightness;
     }
     /**
      * Mixes light color from blocks neighbouring given position using trilinear interpolation.
