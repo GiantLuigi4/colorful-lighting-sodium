@@ -1,13 +1,17 @@
 package me.erykczy.colorfullighting.compat.oculus.specific;
 
+import com.github.andrew0030.pandora_core.shadowed.tfc.glsl.statements.AssignmentStatement;
 import io.github.douira.glsl_transformer.ast.node.TranslationUnit;
 import io.github.douira.glsl_transformer.ast.node.declaration.TypeAndInitDeclaration;
+import io.github.douira.glsl_transformer.ast.node.expression.Expression;
 import io.github.douira.glsl_transformer.ast.node.expression.ReferenceExpression;
+import io.github.douira.glsl_transformer.ast.node.expression.binary.AssignmentExpression;
 import io.github.douira.glsl_transformer.ast.node.expression.unary.FunctionCallExpression;
 import io.github.douira.glsl_transformer.ast.node.external_declaration.DeclarationExternalDeclaration;
 import io.github.douira.glsl_transformer.ast.node.external_declaration.ExternalDeclaration;
 import io.github.douira.glsl_transformer.ast.node.statement.CompoundStatement;
 import io.github.douira.glsl_transformer.ast.node.statement.Statement;
+import io.github.douira.glsl_transformer.ast.node.statement.terminal.ExpressionStatement;
 import io.github.douira.glsl_transformer.ast.node.type.specifier.BuiltinNumericTypeSpecifier;
 import io.github.douira.glsl_transformer.ast.query.Root;
 import io.github.douira.glsl_transformer.ast.query.match.AutoHintedMatcher;
@@ -15,7 +19,6 @@ import io.github.douira.glsl_transformer.ast.query.match.HintedMatcher;
 import io.github.douira.glsl_transformer.ast.transform.ASTInjectionPoint;
 import io.github.douira.glsl_transformer.ast.transform.ASTParser;
 import io.github.douira.glsl_transformer.parser.ParseShape;
-import kroppeb.stareval.expression.CallExpression;
 import me.erykczy.colorfullighting.compat.oculus.Resources;
 import net.irisshaders.iris.pipeline.transform.PatchShaderType;
 import net.irisshaders.iris.pipeline.transform.parameter.Parameters;
@@ -25,7 +28,7 @@ import java.util.List;
 
 import static me.erykczy.colorfullighting.compat.oculus.specific.ShaderSpecificPatcher.*;
 
-public class ComplementaryPatcher {
+public class BSLPatcher {
 	private static final HintedMatcher<ExternalDeclaration> LOCATE_TEXCOORD_out = new AutoHintedMatcher<>(
 			"flat out vec2 lmCoord;",
 			ParseShape.EXTERNAL_DECLARATION
@@ -37,11 +40,11 @@ public class ComplementaryPatcher {
 			boolean core, PatchShaderType type
 	) {
 		HintedMatcher<ExternalDeclaration> LOCATE_TEXCOORD_out = new AutoHintedMatcher<>(
-				"flat out vec2 lmCoord;",
+				"flat varying vec2 texCoord, lmCoord;",
 				ParseShape.EXTERNAL_DECLARATION
 		);
 		HintedMatcher<ExternalDeclaration> LOCATE_TEXCOORD_out_n = new AutoHintedMatcher<>(
-				"out vec2 lmCoord;",
+				"varying vec2 texCoord, lmCoord;",
 				ParseShape.EXTERNAL_DECLARATION
 		);
 		
@@ -106,7 +109,7 @@ public class ComplementaryPatcher {
 				expr.replaceBy(expr(
 						root,
 //						"colorful_lighting_blendLight(lightmap, lmCoord).xyz"
-						"cl_lighting_value"
+						"(cl_lighting_value * 1.5)"
 				));
 			}
 		} else if (type == PatchShaderType.VERTEX) {
@@ -129,26 +132,29 @@ public class ComplementaryPatcher {
 			
 			if (!injectedCl) return;
 			
-			for (FunctionCallExpression call : root.nodeIndex.get(FunctionCallExpression.class)) {
-				if (call.getFunctionName() == null) {
-					continue;
+			for (ExpressionStatement st : root.nodeIndex.get(ExpressionStatement.class)) {
+				Expression i = st.getExpression();
+				if (i instanceof AssignmentExpression expr) {
+					Expression l = expr.getLeft();
+					if (l instanceof ReferenceExpression ref) {
+						if (!ref.getIdentifier().getName().equals("lmCoord")) {
+							continue;
+						}
+					} else {
+						continue;
+					}
+					
+					CompoundStatement block = st.getAncestor(CompoundStatement.class);
+					int indx = block.getChildren().indexOf(st);
+					block.getChildren().add(
+							indx + 1,
+							statement(
+									root,
+									"cl_lighting_value = colorful_lighting_color;"
+							)
+					);
+					break;
 				}
-				
-				if (!call.getFunctionName().getName().equals("GetLightMapCoordinates")) {
-					continue;
-				}
-				
-				Statement st = call.getAncestor(Statement.class);
-				CompoundStatement block = st.getAncestor(CompoundStatement.class);
-				int indx = block.getChildren().indexOf(st);
-				block.getChildren().add(
-						indx + 1,
-						statement(
-								root,
-								"cl_lighting_value = colorful_lighting_color;"
-						)
-				);
-				break;
 			}
 		}
 	}

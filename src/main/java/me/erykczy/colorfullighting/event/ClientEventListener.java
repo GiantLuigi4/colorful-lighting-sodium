@@ -30,31 +30,31 @@ public class ClientEventListener {
         DynamicLightsCompat.clientTick();
 
         // Check for Oculus shader state changes
-        if (OculusCompat.isOculusLoaded()) {
-            boolean isShaderPackInUse = OculusCompat.isShaderPackInUse();
-            String packName = isShaderPackInUse ? OculusCompat.getCurrentShaderPackName() : null;
-            if (isShaderPackInUse != wasShaderPackInUse || !java.util.Objects.equals(packName, lastShaderPackName)) {
-                wasShaderPackInUse = isShaderPackInUse;
-                lastShaderPackName = packName;
-                if (isShaderPackInUse) {
-                    // Packs carrying the Colorful Lighting patch marker decode the packed
-                    // lightmap format themselves, so the engine can stay on.
-                    boolean patched = OculusCompat.isShaderPackPatched(packName);
-                    ColoredLightEngine.getInstance().setEnabled(true);
-                    if (patched) {
-                        ColorfulLighting.LOGGER.info("Oculus shader '{}' is Colorful Lighting patched, keeping colored lighting enabled", packName);
-                    } else {
-                        ColorfulLighting.LOGGER.info("Oculus shader '{}' enabled, disabling colored lighting (no Colorful Lighting patch found)", packName);
-                    }
-                } else {
-                    ColoredLightEngine.getInstance().setEnabled(true);
-                    ColorfulLighting.LOGGER.info("Oculus shader disabled, enabling colored lighting");
-                }
-                if (Minecraft.getInstance().levelRenderer != null) {
-                    Minecraft.getInstance().levelRenderer.allChanged();
-                }
-            }
-        }
+//        if (OculusCompat.isOculusLoaded()) {
+//            boolean isShaderPackInUse = OculusCompat.isShaderPackInUse();
+//            String packName = isShaderPackInUse ? OculusCompat.getCurrentShaderPackName() : null;
+//            if (isShaderPackInUse != wasShaderPackInUse || !java.util.Objects.equals(packName, lastShaderPackName)) {
+//                wasShaderPackInUse = isShaderPackInUse;
+//                lastShaderPackName = packName;
+//                if (isShaderPackInUse) {
+//                    // Packs carrying the Colorful Lighting patch marker decode the packed
+//                    // lightmap format themselves, so the engine can stay on.
+//                    boolean patched = OculusCompat.isShaderPackPatched(packName);
+//                    ColoredLightEngine.getInstance().setEnabled(true);
+//                    if (patched) {
+//                        ColorfulLighting.LOGGER.info("Oculus shader '{}' is Colorful Lighting patched, keeping colored lighting enabled", packName);
+//                    } else {
+//                        ColorfulLighting.LOGGER.info("Oculus shader '{}' enabled, disabling colored lighting (no Colorful Lighting patch found)", packName);
+//                    }
+//                } else {
+//                    ColoredLightEngine.getInstance().setEnabled(true);
+//                    ColorfulLighting.LOGGER.info("Oculus shader disabled, enabling colored lighting");
+//                }
+//                if (Minecraft.getInstance().levelRenderer != null) {
+//                    Minecraft.getInstance().levelRenderer.allChanged();
+//                }
+//            }
+//        }
 
         if (ColorfulLighting.clientAccessor == null) return;
         var player = ColorfulLighting.clientAccessor.getPlayer();

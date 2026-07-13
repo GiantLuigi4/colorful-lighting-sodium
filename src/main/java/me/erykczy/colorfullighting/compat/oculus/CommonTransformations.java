@@ -12,6 +12,7 @@ import io.github.douira.glsl_transformer.ast.query.match.HintedMatcher;
 import io.github.douira.glsl_transformer.ast.transform.ASTInjectionPoint;
 import io.github.douira.glsl_transformer.ast.transform.ASTParser;
 import io.github.douira.glsl_transformer.parser.ParseShape;
+import me.erykczy.colorfullighting.common.ColoredLightEngine;
 import me.erykczy.colorfullighting.common.accessors.iris.CustomShaderProperties;
 import me.erykczy.colorfullighting.compat.oculus.specific.ShaderSpecificPatcher;
 import me.erykczy.colorfullighting.mixin.compat.iris.ShaderPackAccessor;
@@ -75,6 +76,8 @@ public class CommonTransformations {
 			Root root, Parameters parameters,
 			boolean core, CallbackInfo ci
 	) {
+		if (!ColoredLightEngine.getInstance().isEnabled()) return;
+		
 		TextureStage stage = parameters.getTextureStage();
 		Patch patch = parameters.patch;
 		PatchShaderType type = parameters.type;

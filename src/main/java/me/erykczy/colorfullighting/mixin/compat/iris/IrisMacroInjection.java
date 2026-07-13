@@ -1,6 +1,7 @@
 package me.erykczy.colorfullighting.mixin.compat.iris;
 
 import com.google.common.collect.ImmutableList;
+import me.erykczy.colorfullighting.common.ColoredLightEngine;
 import net.irisshaders.iris.gl.shader.StandardMacros;
 import net.irisshaders.iris.helpers.StringPair;
 import org.spongepowered.asm.mixin.Mixin;
@@ -33,6 +34,8 @@ public class IrisMacroInjection {
 	)
 	private static void colorfullighting$injectClStandardDefines(CallbackInfoReturnable<ImmutableList<StringPair>> cir, ArrayList<StringPair> standardDefines)
 	{
-		define(standardDefines, "HAS_COLORFUL_LIGHTING");
+		if (!ColoredLightEngine.getInstance().isEnabled()) return;
+		
+		define(standardDefines, "COLORFUL_LIGHTING_MOD_PRESENT");
 	}
 }

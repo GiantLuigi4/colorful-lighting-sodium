@@ -87,13 +87,19 @@ public class ShaderSpecificPatcher {
 			if (txt.contains("""
 					/////////////////////////////////////
 					// Complementary Shaders by EminGT //
-					/////////////////////////////////////
 					"""))
 				return "Complementary";
+			if (txt.contains("""
+					/*\s
+					BSL Shaders v8 Series by Capt Tatsu\s
+					https://capttatsu.com\s
+					*/\s
+					"""))
+				return "BSL";
 		} catch (Throwable ignored) {
 		}
-			
-			return "Other";
+		
+		return "Other";
 	}
 	
 	protected static boolean matchReference(String refTo, Expression expression) {
@@ -121,6 +127,21 @@ public class ShaderSpecificPatcher {
 			case "Complementary":
 				ComplementaryPatcher.patchComplementary(t, tree, root, parameters, core, type);
 				break;
+			case "BSL":
+				BSLPatcher.patchComplementary(t, tree, root, parameters, core, type);
+				break;
 		}
+	}
+	
+	public static Expression expr(Root root, String s) {
+		return ASTParser._getInternalInstance().parseExpression(root, s);
+	}
+	
+	public static Statement statement(Root root, String s) {
+		return ASTParser._getInternalInstance().parseStatement(root, s);
+	}
+	
+	public static ExternalDeclaration declr(Root root, String s) {
+		return ASTParser._getInternalInstance().parseExternalDeclaration(root, s);
 	}
 }

@@ -30,8 +30,9 @@ import net.irisshaders.iris.pipeline.transform.parameter.Parameters;
 import java.util.Objects;
 import java.util.stream.Stream;
 
+import static me.erykczy.colorfullighting.compat.oculus.specific.ShaderSpecificPatcher.*;
+
 public class SildursVibrantPatcher {
-	
 	private static final HintedMatcher<ExternalDeclaration> LOCATE_TEXCOORD = new AutoHintedMatcher<>(
 			"varying vec4 texcoord;",
 			ParseShape.EXTERNAL_DECLARATION
@@ -46,14 +47,6 @@ public class SildursVibrantPatcher {
 			"uniform sampler2D colortex1;",
 			ParseShape.EXTERNAL_DECLARATION
 	);
-	
-	private static Expression expr(Root root, String s) {
-		return ASTParser._getInternalInstance().parseExpression(root, s);
-	}
-	
-	private static Statement statement(Root root, String s) {
-		return ASTParser._getInternalInstance().parseStatement(root, s);
-	}
 	
 	private static void patchSildursVibrantComposite(
 			ASTParser t, TranslationUnit tree,

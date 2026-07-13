@@ -126,4 +126,12 @@ public class OculusCompat {
 		return patchedPackCache.computeIfAbsent(packName, OculusCompat::checkPackPatched);
 		
 	}
+	
+	public static void reloadPack() {
+		try {
+			if (isShaderPackInUse())
+				Iris.reload();
+		} catch (Throwable ignored) {
+		}
+	}
 }
