@@ -62,8 +62,14 @@ public final class DynamicLightsCompat {
     private static final int REBUILD_RANGE = 8;
     /** A tracked source must move this far (squared) before its surroundings are remeshed. */
     private static final double REBUILD_MOVE_THRESHOLD_SQUARED = 0.5 * 0.5;
-    /** A colored entity within this distance of a dynamic light block lends it its color. */
-    private static final double DYNAMIC_BLOCK_COLOR_RADIUS_SQUARED = 4.5 * 4.5;
+    /**
+     * A colored entity within this distance of a dynamic light block lends it its color (nearest
+     * wins). Must cover how far Lively Lighting can put a light block from its cause: merged
+     * clusters average entity positions (up to ~5.2 blocks off with the default 6-block merge
+     * cell), and the in-wall anchor search can displace the block up to lightLevel/2 ≈ 7 blocks.
+     * With the old 4.5 radius those blocks resolved no entity and fell back to white.
+     */
+    private static final double DYNAMIC_BLOCK_COLOR_RADIUS_SQUARED = 8.0 * 8.0;
 
     /** Light-emitting blocks placed by dynamic lighting mods, colored by the entity that caused them. */
     private static final Set<ResourceLocation> DYNAMIC_LIGHT_BLOCK_IDS = Set.of(
