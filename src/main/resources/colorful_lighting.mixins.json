@@ -34,6 +34,7 @@
     "MultiPlayerGameModeMixin",
     "BeaconBlockEntityAccessor",
     "compat.wakes.BrickMixin",
+    "compat.wakes.SplashPlaneParticleMixin",
     "compat.sodium.embeddium.VanillaLikeChunkVertexMixin",
     "compat.flywheel.LightBuffersMixin",
     "compat.flywheel.LightStorageMixin",
