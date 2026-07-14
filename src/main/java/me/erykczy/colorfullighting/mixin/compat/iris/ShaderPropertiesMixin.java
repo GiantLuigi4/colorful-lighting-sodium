@@ -1,8 +1,11 @@
 package me.erykczy.colorfullighting.mixin.compat.iris;
 
 import me.erykczy.colorfullighting.common.accessors.iris.CustomShaderProperties;
+import net.irisshaders.iris.Iris;
 import net.irisshaders.iris.helpers.OptionalBoolean;
 import net.irisshaders.iris.shaderpack.properties.ShaderProperties;
+import net.minecraft.client.Minecraft;
+import net.minecraft.network.chat.Component;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
@@ -43,7 +46,7 @@ public abstract class ShaderPropertiesMixin implements CustomShaderProperties {
 	// 4: custom compat (support explicitly implemented by shader developer)
 	//    disables all helpers, the developer is assumed to have implemented the helpers on their own with this option
 	@Unique
-	private OptionalInt colorfullighting$compatStatus = OptionalInt.of(1);
+	private OptionalInt colorfullighting$compatStatus = OptionalInt.empty();
 	@Unique
 	private String colorfullighting$patcherFamily = null;
 	
